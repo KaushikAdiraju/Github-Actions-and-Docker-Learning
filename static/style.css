@@ -1,0 +1,37 @@
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+body { background-color: #f4f7f6; display: flex; justify-content: center; align-items: center; height: 100vh; }
+.chat-container { width: 100%; max-width: 600px; background: white; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); display: flex; flex-direction: column; height: 85vh; overflow: hidden; }
+.chat-header { background: #2c3e50; color: white; padding: 20px; text-align: center; }
+.chat-box { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; }
+.message { padding: 12px 16px; border-radius: 8px; max-width: 80%; line-height: 1.5; }
+.user-message { background: #3498db; color: white; align-self: flex-end; border-bottom-right-radius: 0; }
+.ai-message { background: #ecf0f1; color: #2c3e50; align-self: flex-start; border-bottom-left-radius: 0; }
+.input-area { display: flex; padding: 15px; background: #fff; border-top: 1px solid #ddd; }
+#user-input { flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 5px; outline: none; font-size: 16px; }
+#send-btn { background: #2c3e50; color: white; border: none; padding: 12px 20px; margin-left: 10px; border-radius: 5px; cursor: pointer; font-size: 16px; transition: background 0.3s; }
+#send-btn:hover { background: #1a252f; }
+.loading { font-style: italic; color: #888; font-size: 14px; }
+#mic-btn {
+    background: transparent;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    padding: 0 10px;
+    transition: transform 0.2s;
+}
+
+#mic-btn:hover {
+    transform: scale(1.1);
+}
+
+/* This class gets added by JS when recording starts */
+.recording {
+    color: red;
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1); }
+}

@@ -1,0 +1,18 @@
+# Web Framework
+flask
+
+# AI Orchestration (LangChain & LangGraph ecosystem)
+langchain
+langchain-core
+langgraph
+
+# LLM Providers (Include both if you want to switch between them, or pick one)
+langchain-groq      # If using Groq's cloud models
+langchain-ollama    # If using local Ollama models
+
+# Tools & Community Integrations
+langchain-community 
+tavily-python       # Required for the Tavily web search tool
+
+# Utilities
+python-dotenv       # Required to load your .env file
