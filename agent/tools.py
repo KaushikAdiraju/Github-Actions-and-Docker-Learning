@@ -1,8 +1,10 @@
-from langchain_community.tools.tavily_search import TavilySearchResults
+import os
+from langchain_community.utilities import SearxSearchWrapper
+from langchain_community.tools import SearxSearchResults
 
-# Initialize the Tavily search tool. 
-# max_results=3 keeps the context window small and the response fast.
-tavily_tool = TavilySearchResults(max_results=3)
+# Dynamically read the URL from the environment variables, fallback to localhost if missing
+searx_host_url = os.environ.get("SEARXNG_URL", "http://localhost:8080")
 
-# Group all tools into a list so they can be easily bound to the LLM
-tools = [tavily_tool]
+searx_wrapper = SearxSearchWrapper(searx_host=searx_host_url)
+searx_tool = SearxSearchResults(wrapper=searx_wrapper, max_results=3)
+tools = [searx_tool]

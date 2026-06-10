@@ -1,0 +1,18 @@
+use_default_settings: true
+
+server:
+  bind_address: "0.0.0.0"
+  secret_key: "local_development_secret_key_string"
+
+search:
+  formats:
+    - html
+    - json
+
+bot_detection:
+  ip_limit:
+    stats_window: 0
+    ban_time: 0
+
+redis:
+  url: ""

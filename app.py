@@ -70,4 +70,5 @@ def transcribe():
         return jsonify({"error": "Failed to transcribe audio"}), 500
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    # Binding to 0.0.0.0 allows the container to accept external mapping requests
+    app.run(host="0.0.0.0", port=5000, debug=True)

@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  chatbot:
+    build: .
+    container_name: websearch_chatbot_app
+    ports:
+      - "5000:5000"
+    env_file:
+      - .env
+    environment:
+      - SEARXNG_URL=http://searxng:8080
+    depends_on:
+      - searxng
+
+  searxng:
+    image: searxng/searxng:latest
+    container_name: local_searxng
+    ports:
+      - "8080:8080"
+    # Mount your local settings file directly into the container's config folder
+    volumes:
+      - ./searxng:/etc/searxng:rw
+    restart: always
