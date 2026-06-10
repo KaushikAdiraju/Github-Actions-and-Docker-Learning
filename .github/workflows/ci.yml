@@ -35,6 +35,9 @@ jobs:
         docker build -t websearch-chatbot:test .
 
     # Step 5: Verify that your Docker Compose layout assembles cleanly
+    # Step 5: Verify that your Docker Compose layout assembles cleanly
     - name: Test Docker Compose Configuration
       run: |
+        # Create a temporary dummy .env file so the docker compose validator doesn't crash
+        touch .env
         docker compose config
