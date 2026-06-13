@@ -1,0 +1,60 @@
+name: CD Production Deployment
+
+# Trigger the CD pipeline ONLY when code is successfully pushed or merged into the main branch
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    # Required permissions to securely request an OIDC security token from Google Cloud
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+    # Step 1: Pull the latest verified code from your repository
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    # Step 2: Authenticate securely with GCP using modern OIDC Workload Identity (No passwords!)
+    - name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@v2
+      with:
+        workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+        service_account: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
+
+    # Step 3: Configure the GitHub runner's local Docker daemon to talk to GCP's Artifact Registry
+    - name: Configure Docker for GCP
+      run: |
+        gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
+
+    # Step 4: Build your custom Flask application image and tag it for your private GCP repository
+    - name: Build and Push Custom Chatbot Image
+      env:
+        REGISTRY_URL: us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/chatbot-repo/websearch-chatbot:latest
+      run: |
+        docker build -t $REGISTRY_URL .
+        docker push $REGISTRY_URL
+
+    # Step 5: Log into your GCP Compute Engine VM via secure SSH keys and swap out the application
+    - name: Execute Remote Deployment via SSH
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.GCP_VM_IP }}
+        username: kaushikadiraju3
+        key: ${{ secrets.GCP_SSH_PRIVATE_KEY }}
+        script: |
+          # 1. Navigate to your custom application workspace on the VM
+          cd /home/kaushikadiraju3/app
+          
+          # 2. Authenticate the VM's local Docker daemon to pull down your private registry images
+          gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
+          
+          # 3. Pull down the fresh image that GitHub just pushed to the Artifact Registry
+          docker compose pull
+          
+          # 4. Gracefully recreate the containers. It stops the old one and boots the new one instantly!
+          docker compose up -d --remove-orphans
