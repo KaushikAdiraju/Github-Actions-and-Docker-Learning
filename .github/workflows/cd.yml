@@ -19,19 +19,21 @@ jobs:
     - name: Checkout Code
       uses: actions/checkout@v4
 
-    # Step 2: Authenticate securely with GCP using modern OIDC Workload Identity (No passwords!)
+   # Step 2: Authenticate securely with GCP and explicitly request an access token
     - name: Authenticate to Google Cloud
+      id: auth
       uses: google-github-actions/auth@v2
       with:
+        token_format: 'access_token' # <- This forces the action to generate the token directly!
         workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
         service_account: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
 
-    # Step 3: Extract the OIDC token and force Docker to log directly into your Artifact Registry host
+    # Step 3: Feed that generated token directly into standard Docker Login
     - name: Log into Google Artifact Registry
       run: |
-        gcloud auth print-access-token | docker login -u oauth2accesstoken --password-stdin https://us-central1-docker.pkg.dev
+        echo "${{ steps.auth.outputs.access_token }}" | docker login -u oauth2accesstoken --password-stdin https://us-central1-docker.pkg.dev
 
-    # Step 4: Build your custom Flask application image and tag it for your private GCP repository
+    # Step 4: Build and Push Custom Chatbot Image
     - name: Build and Push Custom Chatbot Image
       env:
         REGISTRY_URL: us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/chatbot-repo/websearch-chatbot:latest
