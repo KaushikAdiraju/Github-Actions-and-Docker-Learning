@@ -38,7 +38,7 @@ jobs:
     - name: Execute Remote Deployment via Google SSH
       run: |
         gcloud compute ssh kaushikadiraju3@${{ secrets.GCP_VM_IP }} \
-          --zone="us-central1-a" \
+          --zone="us-central1-c" \
           --quiet \
           --command="
             cd /home/kaushikadiraju3/app && \
