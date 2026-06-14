@@ -34,10 +34,15 @@ jobs:
       run: |
         docker build -t websearch-chatbot:test .
 
-    # Step 5: Verify that your Docker Compose layout assembles cleanly
-    # Step 5: Verify that your Docker Compose layout assembles cleanly
-    - name: Test Docker Compose Configuration
+    # Step 5: Log into your GCP VM securely using Google's official OS Login wrapper
+    - name: Execute Remote Deployment via Google SSH
       run: |
-        # Create a temporary dummy .env file so the docker compose validator doesn't crash
-        touch .env
-        docker compose config
+        gcloud compute ssh kaushikadiraju3@${{ secrets.GCP_VM_IP }} \
+          --zone="us-central1-a" \
+          --quiet \
+          --command="
+            cd /home/kaushikadiraju3/app && \
+            gcloud auth configure-docker us-central1-docker.pkg.dev --quiet && \
+            docker compose pull && \
+            docker compose up -d --remove-orphans
+          "
