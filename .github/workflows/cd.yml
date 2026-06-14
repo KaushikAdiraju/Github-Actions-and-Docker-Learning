@@ -1,6 +1,5 @@
 name: CD Production Deployment
 
-# Trigger the CD pipeline ONLY when code is successfully pushed or merged into the main branch
 on:
   push:
     branches: [ main ]
@@ -8,32 +7,27 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    
-    # Required permissions to securely request an OIDC security token from Google Cloud
     permissions:
       contents: read
       id-token: write
 
     steps:
-    # Step 1: Pull the latest verified code from your repository
     - name: Checkout Code
       uses: actions/checkout@v4
 
-   # Step 2: Authenticate securely with GCP and explicitly request an access token
     - name: Authenticate to Google Cloud
       id: auth
       uses: google-github-actions/auth@v2
       with:
-        token_format: 'access_token' # <- This forces the action to generate the token directly!
+        token_format: 'access_token'
         workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
         service_account: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
+        create_credentials_file: true # <- Dictates GitHub to save a persistent credentials file
 
-    # Step 3: Feed that generated token directly into standard Docker Login
     - name: Log into Google Artifact Registry
       run: |
         echo "${{ steps.auth.outputs.access_token }}" | docker login -u oauth2accesstoken --password-stdin https://us-central1-docker.pkg.dev
 
-    # Step 4: Build and Push Custom Chatbot Image
     - name: Build and Push Custom Chatbot Image
       env:
         REGISTRY_URL: us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/chatbot-repo/websearch-chatbot:latest
@@ -41,13 +35,19 @@ jobs:
         docker build -t $REGISTRY_URL .
         docker push $REGISTRY_URL
 
-    # Step 5: Log into your GCP Compute Engine VM via secure SSH keys and swap out the application
-    # Step 5: Log into your GCP VM securely using Google's native authentication environment
     - name: Execute Remote Deployment via Google SSH
       env:
         GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+        GCP_VM_IP: ${{ secrets.GCP_VM_IP }}
+        CREDENTIALS_FILE: ${{ steps.auth.outputs.credentials_file_path }}
       run: |
-        gcloud compute ssh kaushikadiraju3@${{ secrets.GCP_VM_IP }} \
+        # Force the local gcloud environment to read the authenticated OIDC token file
+        export GOOGLE_APPLICATION_CREDENTIALS="$CREDENTIALS_FILE"
+        gcloud auth login --cred-file="$CREDENTIALS_FILE" --quiet
+        gcloud config set project "$GCP_PROJECT_ID"
+
+        # Execute the secure tunnel deployment
+        gcloud compute ssh kaushikadiraju3@$GCP_VM_IP \
           --tunnel-through-iap \
           --quiet \
           --project="$GCP_PROJECT_ID" \
