@@ -42,21 +42,18 @@ jobs:
         docker push $REGISTRY_URL
 
     # Step 5: Log into your GCP Compute Engine VM via secure SSH keys and swap out the application
-    - name: Execute Remote Deployment via SSH
-      uses: appleboy/ssh-action@v1.0.3
-      with:
-        host: ${{ secrets.GCP_VM_IP }}
-        username: kaushikadiraju3
-        key: ${{ secrets.GCP_SSH_PRIVATE_KEY }}
-        script: |
-          # 1. Navigate to your custom application workspace on the VM
-          cd /home/kaushikadiraju3/app
-          
-          # 2. Authenticate the VM's local Docker daemon to pull down your private registry images
-          gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
-          
-          # 3. Pull down the fresh image that GitHub just pushed to the Artifact Registry
-          docker compose pull
-          
-          # 4. Gracefully recreate the containers. It stops the old one and boots the new one instantly!
-          docker compose up -d --remove-orphans
+    # Step 5: Log into your GCP VM securely using Google's native authentication environment
+    - name: Execute Remote Deployment via Google SSH
+      env:
+        GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+      run: |
+        gcloud compute ssh kaushikadiraju3@${{ secrets.GCP_VM_IP }} \
+          --tunnel-through-iap \
+          --quiet \
+          --project="$GCP_PROJECT_ID" \
+          --command="
+            cd /home/kaushikadiraju3/app && \
+            gcloud auth configure-docker us-central1-docker.pkg.dev --quiet && \
+            docker compose pull && \
+            docker compose up -d --remove-orphans
+          "
