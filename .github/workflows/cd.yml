@@ -46,8 +46,9 @@ jobs:
         gcloud auth login --cred-file="$CREDENTIALS_FILE" --quiet
         gcloud config set project "$GCP_PROJECT_ID"
 
-        # Execute the secure tunnel deployment with explicit zone location
-        gcloud compute ssh kaushikadiraju3@$GCP_VM_IP \
+        # Execute the secure tunnel deployment targeting the VM name string
+        # REPLACE 'your-actual-vm-name' below with the exact name of your VM from GCP
+        gcloud compute ssh kaushikadiraju3@instance-20260612-055827\
           --zone="us-central1-c" \
           --tunnel-through-iap \
           --quiet \
