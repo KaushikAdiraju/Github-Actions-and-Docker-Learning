@@ -41,14 +41,27 @@ jobs:
         GCP_VM_IP: ${{ secrets.GCP_VM_IP }}
         CREDENTIALS_FILE: ${{ steps.auth.outputs.credentials_file_path }}
       run: |
-        # Force the local gcloud environment to read the authenticated OIDC token file
         export GOOGLE_APPLICATION_CREDENTIALS="$CREDENTIALS_FILE"
         gcloud auth login --cred-file="$CREDENTIALS_FILE" --quiet
         gcloud config set project "$GCP_PROJECT_ID"
 
-        # Execute the secure tunnel deployment targeting the VM name string
-        # REPLACE 'your-actual-vm-name' below with the exact name of your VM from GCP
-        gcloud compute ssh kaushikadiraju3@instance-20260612-055827\
+        # 1. Create the application directory on the server if it doesn't exist
+        gcloud compute ssh kaushikadiraju3@instance-20260612-055827 \
+          --zone="us-central1-c" \
+          --tunnel-through-iap \
+          --quiet \
+          --project="$GCP_PROJECT_ID" \
+          --command="mkdir -p /home/kaushikadiraju3/app"
+
+        # 2. Securely copy your docker-compose file from GitHub to the VM
+        gcloud compute scp docker-compose.yml kaushikadiraju3@instance-20260612-055827:/home/kaushikadiraju3/app/docker-compose.yml \
+          --zone="us-central1-c" \
+          --tunnel-through-iap \
+          --quiet \
+          --project="$GCP_PROJECT_ID"
+
+        # 3. Execute the deployment using the newly copied file
+        gcloud compute ssh kaushikadiraju3@instance-20260612-055827 \
           --zone="us-central1-c" \
           --tunnel-through-iap \
           --quiet \
