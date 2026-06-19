@@ -45,13 +45,13 @@ jobs:
         gcloud auth login --cred-file="$CREDENTIALS_FILE" --quiet
         gcloud config set project "$GCP_PROJECT_ID"
 
-        # 1. Create the application directory on the server if it doesn't exist
+        # 1. Create the app directory and forcefully take ownership of it so we can write to it
         gcloud compute ssh kaushikadiraju3@instance-20260612-055827 \
           --zone="us-central1-c" \
           --tunnel-through-iap \
           --quiet \
           --project="$GCP_PROJECT_ID" \
-          --command="mkdir -p /home/kaushikadiraju3/app"
+          --command="sudo mkdir -p /home/kaushikadiraju3/app && sudo chown -R kaushikadiraju3 /home/kaushikadiraju3/app"
 
         # 2. Securely copy your docker-compose file from GitHub to the VM
         gcloud compute scp docker-compose.yml kaushikadiraju3@instance-20260612-055827:/home/kaushikadiraju3/app/docker-compose.yml \
@@ -60,7 +60,7 @@ jobs:
           --quiet \
           --project="$GCP_PROJECT_ID"
 
-        # 3. Execute the deployment using the newly copied file
+        # 3. Execute the deployment (using sudo to ensure Docker has execution rights)
         gcloud compute ssh kaushikadiraju3@instance-20260612-055827 \
           --zone="us-central1-c" \
           --tunnel-through-iap \
@@ -68,7 +68,7 @@ jobs:
           --project="$GCP_PROJECT_ID" \
           --command="
             cd /home/kaushikadiraju3/app && \
-            gcloud auth configure-docker us-central1-docker.pkg.dev --quiet && \
-            docker compose pull && \
-            docker compose up -d --remove-orphans
+            sudo gcloud auth configure-docker us-central1-docker.pkg.dev --quiet && \
+            sudo docker compose pull && \
+            sudo docker compose up -d --remove-orphans
           "
