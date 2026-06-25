@@ -1,0 +1,198 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hermes Chatbot</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom scrollbar for a cooler look */
+        .chat-area::-webkit-scrollbar {
+            width: 8px;
+        }
+        .chat-area::-webkit-scrollbar-track {
+            background: #1f2937; /* Dark gray */
+        }
+        .chat-area::-webkit-scrollbar-thumb {
+            background-color: #4b5563; /* Lighter gray */
+            border-radius: 4px;
+        }
+        .chat-area::-webkit-scrollbar-thumb:hover {
+            background-color: #6b7280;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 font-sans h-screen flex flex-col">
+    <div class="flex-grow flex flex-col items-center justify-center p-4">
+        <div class="bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl h-full flex flex-col">
+            <!-- Chat Header -->
+            <div class="p-4 bg-gray-700 rounded-t-lg flex items-center justify-between">
+                <h1 class="text-xl font-bold">Hermes Chatbot</h1>
+                <button id="toggleAudio" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full text-sm">
+                    <span id="audioStatus">🎤 Enable Audio</span>
+                </button>
+            </div>
+
+            <!-- Chat Messages Area -->
+            <div id="chatArea" class="flex-grow p-4 overflow-y-auto chat-area space-y-4">
+                <!-- Messages will be appended here -->
+                <div class="flex justify-start">
+                    <div class="bg-gray-700 p-3 rounded-lg max-w-xs md:max-w-md shadow-md">
+                        <p class="text-sm">Hello! How can I help you today?</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chat Input Area -->
+            <div class="p-4 bg-gray-700 rounded-b-lg flex items-center space-x-2">
+                <input type="text" id="userInput" placeholder="Type your message..."
+                       class="flex-grow p-3 rounded-lg bg-gray-600 text-white border-none focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400">
+                <button id="sendButton"
+                        class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-colors duration-200">
+                    Send
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const chatArea = document.getElementById('chatArea');
+        const userInput = document.getElementById('userInput');
+        const sendButton = document.getElementById('sendButton');
+        const toggleAudioButton = document.getElementById('toggleAudio');
+        const audioStatusSpan = document.getElementById('audioStatus');
+
+        let mediaRecorder;
+        let audioChunks = [];
+        let isRecording = false;
+
+        async function sendMessage() {
+            const message = userInput.value.trim();
+            if (message === '') return;
+
+            appendMessage(message, 'user');
+            userInput.value = '';
+            showTypingIndicator();
+
+            try {
+                const response = await fetch('/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ message: message })
+                });
+                const data = await response.json();
+                hideTypingIndicator();
+                appendMessage(data.response, 'bot');
+            } catch (error) {
+                console.error('Error sending message:', error);
+                hideTypingIndicator();
+                appendMessage('Sorry, I am unable to respond at the moment.', 'bot');
+            }
+        }
+
+        async function sendAudioForTranscription(audioBlob) {
+            showTypingIndicator();
+            const formData = new FormData();
+            formData.append('audio', audioBlob, 'audio.webm');
+
+            try {
+                const response = await fetch('/transcribe', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+                hideTypingIndicator();
+                if (data.text) {
+                    appendMessage(`(Audio): ${data.text}`, 'user');
+                    // Now send the transcribed text to the chat endpoint
+                    userInput.value = data.text; // Pre-fill input with transcription
+                    await sendMessage(); // Send the transcribed text as a message
+                } else {
+                    appendMessage('Failed to transcribe audio.', 'bot');
+                }
+            } catch (error) {
+                console.error('Error transcribing audio:', error);
+                hideTypingIndicator();
+                appendMessage('Error processing audio.', 'bot');
+            }
+        }
+
+        function appendMessage(text, sender) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `flex ${sender === 'user' ? 'justify-end' : 'justify-start'}`;
+
+            const bubbleDiv = document.createElement('div');
+            bubbleDiv.className = `p-3 rounded-lg max-w-xs md:max-w-md shadow-md ${sender === 'user' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-100'}`;
+            bubbleDiv.innerHTML = `<p class="text-sm">${text}</p>`; // Use innerHTML to allow basic formatting
+
+            messageDiv.appendChild(bubbleDiv);
+            chatArea.appendChild(messageDiv);
+            chatArea.scrollTop = chatArea.scrollHeight; // Scroll to bottom
+        }
+
+        function showTypingIndicator() {
+            let indicator = document.getElementById('typingIndicator');
+            if (!indicator) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'flex justify-start';
+                indicator = document.createElement('div');
+                indicator.id = 'typingIndicator';
+                indicator.className = 'bg-gray-700 p-3 rounded-lg max-w-xs md:max-w-md shadow-md typing-indicator';
+                indicator.innerHTML = '<p class="text-sm">...</p>'; // Simple dots for now
+                messageDiv.appendChild(indicator);
+                chatArea.appendChild(messageDiv);
+            }
+            chatArea.scrollTop = chatArea.scrollHeight;
+        }
+
+        function hideTypingIndicator() {
+            const indicator = document.getElementById('typingIndicator');
+            if (indicator) {
+                indicator.parentElement.remove(); // Remove the parent div
+            }
+        }
+
+        sendButton.addEventListener('click', sendMessage);
+        userInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        toggleAudioButton.addEventListener('click', async () => {
+            if (!isRecording) {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+                    mediaRecorder.ondataavailable = (event) => {
+                        audioChunks.push(event.data);
+                    };
+                    mediaRecorder.onstop = () => {
+                        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                        sendAudioForTranscription(audioBlob);
+                        audioChunks = [];
+                    };
+                    mediaRecorder.start();
+                    isRecording = true;
+                    audioStatusSpan.textContent = '🔴 Recording... Click to Stop';
+                    toggleAudioButton.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+                    toggleAudioButton.classList.add('bg-red-600', 'hover:bg-red-700');
+                } catch (err) {
+                    console.error('Error accessing microphone:', err);
+                    alert('Could not access microphone. Please ensure it's enabled and try again.');
+                }
+            } else {
+                mediaRecorder.stop();
+                isRecording = false;
+                audioStatusSpan.textContent = '🎤 Enable Audio';
+                toggleAudioButton.classList.remove('bg-red-600', 'hover:bg-red-700');
+                toggleAudioButton.classList.add('bg-blue-600', 'hover:bg-blue-700');
+            }
+        });
+    </script>
+</body>
+</html>
